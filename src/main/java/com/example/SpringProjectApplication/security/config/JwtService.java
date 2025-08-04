@@ -1,4 +1,4 @@
-package com.example.demoApplication.security.config;
+package com.example.SpringProjectApplication.security.config;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

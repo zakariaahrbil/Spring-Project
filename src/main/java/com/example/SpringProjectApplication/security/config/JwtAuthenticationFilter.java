@@ -1,6 +1,6 @@
-package com.example.demoApplication.security.config;
+package com.example.SpringProjectApplication.security.config;
 
-import com.example.demoApplication.Services.UserService;
+import com.example.SpringProjectApplication.Services.UserService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

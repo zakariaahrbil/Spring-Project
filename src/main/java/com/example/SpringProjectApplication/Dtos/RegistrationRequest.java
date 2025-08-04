@@ -1,4 +1,4 @@
-package com.example.demoApplication.Dtos;
+package com.example.SpringProjectApplication.Dtos;
 
 
 import lombok.*;

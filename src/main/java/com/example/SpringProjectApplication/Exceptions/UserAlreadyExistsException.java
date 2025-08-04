@@ -1,4 +1,4 @@
-package com.example.demoApplication.Exceptions;
+package com.example.SpringProjectApplication.Exceptions;
 
 public class UserAlreadyExistsException extends RuntimeException{
 

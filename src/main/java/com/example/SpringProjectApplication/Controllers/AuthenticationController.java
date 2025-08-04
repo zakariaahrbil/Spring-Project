@@ -1,10 +1,10 @@
-package com.example.demoApplication.Controllers;
+package com.example.SpringProjectApplication.Controllers;
 
 
-import com.example.demoApplication.Dtos.AuthenticationRequest;
-import com.example.demoApplication.Dtos.RegistrationRequest;
-import com.example.demoApplication.Dtos.AuthenticationResponse;
-import com.example.demoApplication.Services.AuthenticationServiceImpl;
+import com.example.SpringProjectApplication.Dtos.AuthenticationRequest;
+import com.example.SpringProjectApplication.Dtos.RegistrationRequest;
+import com.example.SpringProjectApplication.Dtos.AuthenticationResponse;
+import com.example.SpringProjectApplication.Services.AuthenticationServiceImpl;
 import lombok.AllArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

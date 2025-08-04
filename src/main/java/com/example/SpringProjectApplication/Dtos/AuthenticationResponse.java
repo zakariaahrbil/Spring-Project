@@ -1,6 +1,6 @@
-package com.example.demoApplication.Dtos;
+package com.example.SpringProjectApplication.Dtos;
 
-import com.example.demoApplication.Entities.Role;
+import com.example.SpringProjectApplication.Entities.Role;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

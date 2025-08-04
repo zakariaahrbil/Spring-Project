@@ -1,15 +1,15 @@
-package com.example.demoApplication.Services;
+package com.example.SpringProjectApplication.Services;
 
 
-import com.example.demoApplication.Dtos.AuthenticationRequest;
-import com.example.demoApplication.Dtos.AuthenticationResponse;
-import com.example.demoApplication.Dtos.RegistrationRequest;
-import com.example.demoApplication.Entities.Role;
-import com.example.demoApplication.Entities.User;
-import com.example.demoApplication.Exceptions.UserAlreadyExistsException;
-import com.example.demoApplication.Repositories.UserRepository;
-import com.example.demoApplication.security.PasswordEncoder;
-import com.example.demoApplication.security.config.JwtService;
+import com.example.SpringProjectApplication.Dtos.AuthenticationRequest;
+import com.example.SpringProjectApplication.Dtos.AuthenticationResponse;
+import com.example.SpringProjectApplication.Dtos.RegistrationRequest;
+import com.example.SpringProjectApplication.Entities.Role;
+import com.example.SpringProjectApplication.Entities.User;
+import com.example.SpringProjectApplication.Exceptions.UserAlreadyExistsException;
+import com.example.SpringProjectApplication.Repositories.UserRepository;
+import com.example.SpringProjectApplication.security.PasswordEncoder;
+import com.example.SpringProjectApplication.security.config.JwtService;
 import lombok.AllArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;

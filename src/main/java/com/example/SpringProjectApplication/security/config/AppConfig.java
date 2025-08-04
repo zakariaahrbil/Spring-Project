@@ -1,7 +1,7 @@
-package com.example.demoApplication.security.config;
+package com.example.SpringProjectApplication.security.config;
 
-import com.example.demoApplication.Services.UserService;
-import com.example.demoApplication.security.PasswordEncoder;
+import com.example.SpringProjectApplication.Services.UserService;
+import com.example.SpringProjectApplication.security.PasswordEncoder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
