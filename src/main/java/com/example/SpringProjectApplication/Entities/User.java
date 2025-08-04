@@ -24,11 +24,13 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
     private String username;
+    @Column(unique = true)
     private String email;
     private String password;
     @Enumerated(EnumType.STRING)
     private Role role;
-    private boolean verified = false;
+    @Column(columnDefinition = "tinyint(1)")
+    private boolean verified ;
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -41,24 +43,15 @@ public class User implements UserDetails {
         return password;
     }
 
+    // Return email as the username for authentication
     @Override
     public String getUsername() {
         return email;
     }
 
-    @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
-
-    @Override
-    public boolean isAccountNonLocked() {
-        return true;
-    }
-
-    @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
+    // Helper method to get actual username
+    public String getActualUsername() {
+        return username;
     }
 
     @Override
