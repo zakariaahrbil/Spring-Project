@@ -9,6 +9,7 @@ import com.example.SpringProjectApplication.Entities.User;
 import com.example.SpringProjectApplication.Exceptions.UserAlreadyExistsException;
 import com.example.SpringProjectApplication.Repositories.UserRepository;
 import com.example.SpringProjectApplication.security.config.JwtService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -43,15 +44,11 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                 .build();
 
         userRepository.save(user);
-
-        // Include role in token claims
-        var jwtToken = jwtService.generateToken(
-                Map.of("role", user.getRole().name()),
-                user
-        );
+        var tokens = getTokens(user);
 
         return AuthenticationResponse.builder()
-                .token(jwtToken)
+                .token(tokens[0])
+                .refreshToken(tokens[1])
                 .email(user.getEmail())
                 .username(user.getUsername())
                 .role(user.getRole())
@@ -61,18 +58,6 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     @Override
     public AuthenticationResponse login(AuthenticationRequest request) {
         try {
-            User user = userRepository.findByEmail(request.getEmail())
-                    .orElseThrow(() -> {
-                        System.out.println("User not found in database");
-                        return new UsernameNotFoundException("User not found");
-                    });
-
-            System.out.println("User found: " + user.getEmail());
-            System.out.println("Account enabled: " + user.isEnabled());
-            System.out.println("Password matches: " +
-                    passwordEncoder.matches(request.getPassword(), user.getPassword()));
-
-
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             request.getEmail(),
@@ -80,41 +65,92 @@ public class AuthenticationServiceImpl implements AuthenticationService {
                     )
             );
 
-
-             user = userRepository.findByEmail(request.getEmail())
+             User user = userRepository.findByEmail(request.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("role", user.getRole().name());
-            claims.put("username", user.getActualUsername());
-
-
-            var jwtToken = jwtService.generateToken(
-                    claims,
-                    user
-            );
+            var tokens = getTokens(user);
 
             return AuthenticationResponse.builder()
-                    .token(jwtToken)
+                    .token(tokens[0])
+                    .refreshToken(tokens[1])
                     .email(user.getEmail())
                     .username(user.getActualUsername())
                     .role(user.getRole())
                     .build();
 
-        } catch (BadCredentialsException e) {
-            throw new BadCredentialsException("Invalid email or password",e.getCause());
-        } catch (AuthenticationException e) {
+        }catch (AuthenticationException e) {
             throw new RuntimeException("Authentication failed", e);
         }
     }
 
+    @Override
+    public AuthenticationResponse refresh(HttpServletRequest request, HttpServletRequest response) {
+        String header = request.getHeader("X-Refresh-Token");
+
+        if(header == null || !header.startsWith("Bearer " )) {
+            throw new BadCredentialsException("Invalid Authorization header");
+        }
+
+        String token = header.substring(7);
+        if(!jwtService.isRefreshToken(token)) {
+            throw new BadCredentialsException("Invalid refresh token");
+        }
+
+        String email = jwtService.extractUsername(token);
+        if(email == null) {
+            throw new BadCredentialsException("Invalid refresh token");
+        }
+
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email: " + email));
+
+        if(!jwtService.isTokenValid(token,user)){
+            throw new BadCredentialsException("Invalid token");
+        }
+
+        var tokens = getTokens(user);
+
+        return AuthenticationResponse.builder()
+                .token(tokens[0])
+                .refreshToken(tokens[1])
+                .email(user.getEmail())
+                .username(user.getActualUsername())
+                .role(user.getRole())
+                .build();
+
+
+    }
+
+
+    private String[] getTokens(User user) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", user.getRole().name());
+        claims.put("username", user.getActualUsername());
+
+        Map<String, Object> refreshClaims = new HashMap<>();
+        refreshClaims.put("role", user.getRole().name());
+        refreshClaims.put("username", user.getActualUsername());
+        refreshClaims.put("type", "refresh");
+
+
+        var jwtToken = jwtService.generateToken(
+                claims,
+                user
+        );
+
+        var jwtRefreshToken = jwtService.generateRefreshToken(
+                refreshClaims,
+                user
+        );
+        return new String[]{jwtToken, jwtRefreshToken};
+    }
+
     private void validateRegistrationRequest(RegistrationRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
-            throw new UserAlreadyExistsException("Email Already Exists");
+            throw new UserAlreadyExistsException("Email already in use");
         }
         if (userRepository.existsByUsername(request.getUsername())) {
-            throw new UserAlreadyExistsException("Username Already Exists");
+            throw new UserAlreadyExistsException("Username already in use");
         }
         if (request.getEmail().length() < 5 || !request.getEmail().contains("@")) {
             throw new BadCredentialsException("Invalid email format");

@@ -1,9 +1,10 @@
 package com.example.SpringProjectApplication.security.config;
 
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import java.util.function.Function;
 
 @Service
 public class JwtService {
-    private static final Logger logger = LoggerFactory.getLogger(JwtService.class);
+
 
     @Value("${jwt.secret}")
     private String SECRET;
@@ -24,36 +25,31 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpirationMs;
 
+
+    @Value("${jwt.refreshExpiration}")
+    private long jwtRefreshExpirationMs;
+
     public String extractUsername(String jwt) {
         return extractClaim(jwt, Claims::getSubject);
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        System.out.println("Extracting claims from token: " + token);
         final Claims claims = extractClaims(token);
+        System.out.println("Extracted claims: " + claims);
+
         return claimsResolver.apply(claims);
     }
 
 
     private Claims extractClaims(String token) {
-        try {
-            return Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token)
-                    .getBody();
-        } catch (ExpiredJwtException e) {
-            logger.error("JWT token expired: {}", e.getMessage());
-            throw e;
-        } catch (UnsupportedJwtException e) {
-            logger.error("JWT token is unsupported: {}", e.getMessage());
-            throw e;
-        } catch (MalformedJwtException e) {
-            logger.error("Invalid JWT token: {}", e.getMessage());
-            throw e;
-        }catch (IllegalArgumentException e) {
-            logger.error("JWT claims string is empty: {}", e.getMessage());
-            throw e;
-        }
+
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+
     }
 
     public String generateToken(Map<String, Object> extraClaims, UserDetails user) {
@@ -62,16 +58,19 @@ public class JwtService {
 
     }
 
-    public String generateToken(UserDetails user) {
-        return generateToken(Map.of(), user);
+    public String generateRefreshToken(Map<String, Object> extraClaims, UserDetails user) {
+        return Jwts.builder().setClaims(extraClaims).setSubject(user.getUsername()).setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtRefreshExpirationMs)).signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
+
     }
+
 
     public boolean isTokenValid(String token, UserDetails user) {
         final String username = extractUsername(token);
         return (username.equals(user.getUsername()) && !isTokenExpired(token));
     }
 
-    private boolean isTokenExpired(String token) {
+    public boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }
 
@@ -83,4 +82,21 @@ public class JwtService {
         byte[] keyBytes = Base64.getDecoder().decode(SECRET);
         return Keys.hmacShaKeyFor(keyBytes);
     }
+
+    public boolean isRefreshToken(String jwt) {
+        try {
+            Claims claims = extractClaims(jwt);
+            return "refresh".equals(claims.get("type"));
+        } catch (JwtException e) {
+            return false; // Invalid token
+        }
+    }
+
+    //For testing purposes only
+//    public String generateExpiredToken(User user , Map<String, Object> claims) {
+//        return Jwts.builder().setClaims(claims).setSubject(user.getUsername()).setIssuedAt(new Date(System.currentTimeMillis()))
+//                .setExpiration(new Date(System.currentTimeMillis() - 1000)).signWith(getSigningKey(), SignatureAlgorithm.HS256).compact();
+//    }
+
+
 }
