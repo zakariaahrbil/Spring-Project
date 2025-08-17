@@ -1,0 +1,6 @@
+package com.example.SpringProjectApplication.Entities;
+
+public enum VisitType
+{
+     TELEMEDICINE,  EMERGENCY, FOLLOW_UP, CONSULTATION, PREVENTIVE_CARE, SPECIALIST_REFERRAL, URGENT_CARE, WELLNESS_CHECKUP
+}

@@ -35,6 +35,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             @NonNull FilterChain filterChain
     ) throws ServletException, IOException {
 
+
+
         final String authHeader = request.getHeader(AUTH_HEADER);
 
         if (isInvalidAuthHeader(authHeader)) {
