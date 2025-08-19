@@ -2,6 +2,7 @@ package com.example.SpringProjectApplication.Services;
 
 import com.example.SpringProjectApplication.Dtos.AppointmentDto;
 import com.example.SpringProjectApplication.Entities.Appointment;
+import com.example.SpringProjectApplication.Entities.Role;
 import com.example.SpringProjectApplication.Entities.Status;
 import com.example.SpringProjectApplication.Entities.User;
 import com.example.SpringProjectApplication.Entities.VisitRecord;
@@ -11,8 +12,8 @@ import com.example.SpringProjectApplication.Repositories.UserRepository;
 import com.example.SpringProjectApplication.Repositories.VisitRecordRepository;
 import com.example.SpringProjectApplication.Response.ResponseTemplate;
 import lombok.AllArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -33,9 +34,9 @@ public class AppointmentServiceImpl
     private final VisitRecordRepository visitRecordRepository;
 
     @Override
-    public ResponseTemplate<Appointment> getAppointmentById(Long appointmentId)
+    public ResponseTemplate<AppointmentDto> getAppointmentById(Long appointmentId)
     {
-        try{
+        try {
             Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
             if (appointment.isEmpty()) {
                 throw new ResponseStatusException(
@@ -44,16 +45,23 @@ public class AppointmentServiceImpl
                 );
             }
             Appointment savedAppointment = appointment.get();
+            User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            if (!currentUser.getRole().equals(Role.ADMIN) &&
+                    !savedAppointment.getPatient().getId().equals(currentUser.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to view this appointment");
+            }
 
             return new ResponseTemplate<>(
                     "Appointment retrieved successfully",
-                    savedAppointment,
+                    appointmentMapper.toDto(savedAppointment),
                     true
             );
-
-        }catch(ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while getting the appointment",
@@ -63,9 +71,9 @@ public class AppointmentServiceImpl
     }
 
     @Override
-    public ResponseTemplate<List<Appointment>> getAppointmentByPatientId(Long patientId)
+    public ResponseTemplate<List<AppointmentDto>> getAppointmentsByPatientId(Long patientId)
     {
-        try{
+        try {
             Optional<User> user = userRepository.findById(patientId);
             if (user.isEmpty()) {
                 throw new ResponseStatusException(
@@ -81,16 +89,17 @@ public class AppointmentServiceImpl
                         "No appointments found for this patient"
                 );
             }
+            List<AppointmentDto> appointmentDtos = appointmentMapper.toDtoList(appointments);
             return new ResponseTemplate<>(
                     "Appointments retrieved successfully",
-                    appointments,
+                    appointmentDtos,
                     true
             );
-
-
-        }catch(ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while creating the appointment",
@@ -100,9 +109,9 @@ public class AppointmentServiceImpl
     }
 
     @Override
-    public ResponseTemplate<Appointment> getAppointmentByVisitRecordId(Long visitRecordId)
+    public ResponseTemplate<AppointmentDto> getAppointmentByVisitRecordId(Long visitRecordId)
     {
-        try{
+        try {
             Optional<VisitRecord> visitRecord = visitRecordRepository.findById(visitRecordId);
             if (visitRecord.isEmpty()) {
                 throw new ResponseStatusException(
@@ -117,15 +126,17 @@ public class AppointmentServiceImpl
                         "No appointment found for this visit record"
                 );
             }
+            Appointment savedAppointment = appointment.get();
             return new ResponseTemplate<>(
                     "Appointment retrieved successfully",
-                    appointment.get(),
+                    appointmentMapper.toDto(savedAppointment),
                     true
             );
-
-        }catch(ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while getting the appointment",
@@ -135,25 +146,21 @@ public class AppointmentServiceImpl
     }
 
     @Override
-    public ResponseTemplate<List<Appointment>> getAllAppointments()
+    public ResponseTemplate<List<AppointmentDto>> getAllAppointments()
     {
-        try{
+        try {
             List<Appointment> appointments = appointmentRepository.findAll();
-            if (appointments.isEmpty()) {
-                throw new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "No appointments found"
-                );
-            }
+            List<AppointmentDto> appointmentDtos = appointmentMapper.toDtoList(appointments);
             return new ResponseTemplate<>(
                     "All appointments retrieved successfully",
-                    appointments,
+                    appointmentDtos,
                     true
             );
-
-        }catch(ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while getting all appointments",
@@ -163,23 +170,29 @@ public class AppointmentServiceImpl
     }
 
     @Override
-    public ResponseTemplate<Appointment> createAppointment(AppointmentDto appointment)
+    public ResponseTemplate<AppointmentDto> createAppointment(AppointmentDto appointment)
     {
-        try{
-            if (appointment == null){
+        try {
+
+            Optional<User> patient = userRepository.findById(appointment.getPatientId());
+            if (patient.isEmpty()) {
                 throw new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST,
-                        "Appointment details cannot be null"
+                        HttpStatus.NOT_FOUND,
+                        "Patient not found"
                 );
             }
+
             Appointment newAppointment = appointmentMapper.toEntity(appointment);
+            newAppointment.setStatus(Status.PENDING);
+            newAppointment.setPatient(patient.get());
             Appointment savedAppointment = appointmentRepository.save(newAppointment);
 
-            return new ResponseTemplate<>("Appointment created successfully", savedAppointment, true);
-
-        }catch(ResponseStatusException e){
+            return new ResponseTemplate<>("Appointment created successfully", appointmentMapper.toDto(savedAppointment), true);
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while creating the appointment",
@@ -191,7 +204,7 @@ public class AppointmentServiceImpl
     @Override
     public ResponseTemplate<Void> cancelAppointment(Long appointmentId)
     {
-        try{
+        try {
             Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
             if (appointment.isEmpty()) {
                 throw new ResponseStatusException(
@@ -200,14 +213,21 @@ public class AppointmentServiceImpl
                 );
             }
             Appointment savedAppointment = appointment.get();
+            User currentUser = (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+
+            if (!currentUser.getRole().equals(Role.ADMIN) &&
+                    !savedAppointment.getPatient().getId().equals(currentUser.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Not allowed to cancel this appointment");
+            }
             savedAppointment.setStatus(Status.CANCELED);
             appointmentRepository.save(savedAppointment);
 
             return new ResponseTemplate<>("Appointment canceled successfully", null, true);
-
-        }catch(ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while canceling the appointment",
@@ -217,9 +237,9 @@ public class AppointmentServiceImpl
     }
 
     @Override
-    public ResponseTemplate<Appointment> rescheduleAppointment(Long appointmentId, LocalDateTime newDateTime)
+    public ResponseTemplate<AppointmentDto> rescheduleAppointment(Long appointmentId, LocalDateTime newDateTime)
     {
-        try{
+        try {
             Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
             if (appointment.isEmpty()) {
                 throw new ResponseStatusException(
@@ -237,12 +257,12 @@ public class AppointmentServiceImpl
             savedAppointment.setProposedDateTime(newDateTime);
             appointmentRepository.save(savedAppointment);
 
-            return new ResponseTemplate<>("Appointment rescheduled successfully", savedAppointment, true);
-
+            return new ResponseTemplate<>("Appointment rescheduled successfully", appointmentMapper.toDto(savedAppointment), true);
         }
-        catch (ResponseStatusException e){
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while rescheduling the appointment",
@@ -254,7 +274,7 @@ public class AppointmentServiceImpl
     @Override
     public ResponseTemplate<Void> confirmAppointment(Long appointmentId)
     {
-        try{
+        try {
             Optional<Appointment> appointment = appointmentRepository.findById(appointmentId);
             if (appointment.isEmpty()) {
                 throw new ResponseStatusException(
@@ -268,19 +288,16 @@ public class AppointmentServiceImpl
             appointmentRepository.save(savedAppointment);
 
             return new ResponseTemplate<>("Appointment confirmed successfully", null, true);
-
-        }catch (ResponseStatusException e){
+        }
+        catch (ResponseStatusException e) {
             throw e;
-        }catch (Exception e){
+        }
+        catch (Exception e) {
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "An error occurred while confirming the appointment",
                     e
             );
         }
-
     }
-
-
-
 }

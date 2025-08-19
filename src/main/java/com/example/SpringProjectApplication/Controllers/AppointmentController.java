@@ -1,14 +1,13 @@
 package com.example.SpringProjectApplication.Controllers;
 
 import com.example.SpringProjectApplication.Dtos.AppointmentDto;
-import com.example.SpringProjectApplication.Entities.Appointment;
 import com.example.SpringProjectApplication.Response.ResponseTemplate;
 import com.example.SpringProjectApplication.Services.AppointmentService;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,13 +16,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Controller
-@RequestMapping("/appointments")
+@RestController
+@RequestMapping("/api/appointments")
 @AllArgsConstructor
 public class AppointmentController
 
@@ -32,7 +32,7 @@ public class AppointmentController
     private final AppointmentService appointmentService;
 
     @GetMapping("/{appointmentId}")
-    public ResponseEntity<ResponseTemplate<Appointment>> getAppointmentById(@PathVariable Long appointmentId)
+    public ResponseEntity<ResponseTemplate<AppointmentDto>> getAppointmentById(@PathVariable Long appointmentId)
     {
         try {
             if (appointmentId == null) {
@@ -49,7 +49,8 @@ public class AppointmentController
     }
 
     @GetMapping("")
-    public ResponseEntity<ResponseTemplate<List<Appointment>>> getAllAppointments()
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseTemplate<List<AppointmentDto>>> getAllAppointments()
     {
         try {
             return new ResponseEntity<>(appointmentService.getAllAppointments(), HttpStatus.OK);
@@ -63,13 +64,14 @@ public class AppointmentController
     }
 
     @GetMapping("/patient/{patientId}")
-    public ResponseEntity<ResponseTemplate<List<Appointment>>> getAppointmentsByPatientId(@PathVariable Long patientId)
+    @PreAuthorize("hasRole('ADMIN') or (hasRole('USER') and #patientId == principal.id)")
+    public ResponseEntity<ResponseTemplate<List<AppointmentDto>>> getAppointmentsByPatientId(@PathVariable Long patientId)
     {
         try {
             if (patientId == null) {
                 return new ResponseEntity<>(new ResponseTemplate<>("Patient ID cannot be null", null, false), HttpStatus.BAD_REQUEST);
             }
-            return new ResponseEntity<>(appointmentService.getAppointmentByPatientId(patientId), HttpStatus.OK);
+            return new ResponseEntity<>(appointmentService.getAppointmentsByPatientId(patientId), HttpStatus.OK);
         }
         catch (ResponseStatusException e) {
             return new ResponseEntity<>(new ResponseTemplate<>(e.getReason(), null, false), e.getStatusCode());
@@ -80,11 +82,10 @@ public class AppointmentController
     }
 
     @PostMapping("/create")
-    public ResponseEntity<ResponseTemplate<Appointment>> createAppointment(
-            @RequestBody @Valid AppointmentDto appointmentDto)
+    public ResponseEntity<ResponseTemplate<AppointmentDto>> createAppointment(@Valid @RequestBody AppointmentDto appointmentDto)
     {
         try {
-            return new ResponseEntity<>(appointmentService.createAppointment(appointmentDto), HttpStatus.CREATED);
+            return new ResponseEntity<>(appointmentService.createAppointment(appointmentDto), HttpStatus.OK);
         }
         catch (ResponseStatusException e) {
             return new ResponseEntity<>(new ResponseTemplate<>(e.getReason(), null, false), e.getStatusCode());
@@ -94,8 +95,10 @@ public class AppointmentController
         }
     }
 
-    @DeleteMapping("/cancel")
-    public ResponseEntity<ResponseTemplate<Void>> cancelAppointment(@RequestBody Long appointmentId)
+
+
+    @DeleteMapping("/cancel/{appointmentId}")
+    public ResponseEntity<ResponseTemplate<Void>> cancelAppointment(@PathVariable Long appointmentId)
     {
         try {
             return new ResponseEntity<>(appointmentService.cancelAppointment(appointmentId), HttpStatus.OK);
@@ -108,8 +111,26 @@ public class AppointmentController
         }
     }
 
+    @PutMapping("/confirm/{appointmentId}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseTemplate<Void>> confirmAppointment(@PathVariable Long appointmentId)
+    {
+        try{
+            if (appointmentId == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Appointment ID cannot be null");
+            }
+            return new ResponseEntity<>(appointmentService.confirmAppointment(appointmentId), HttpStatus.OK);
+        }
+        catch (ResponseStatusException e) {
+            return new ResponseEntity<>(new ResponseTemplate<>(e.getReason(), null, false), e.getStatusCode());
+        }catch (Exception e) {
+            return new ResponseEntity<>(new ResponseTemplate<>("An error occurred while confirming the appointment", null, false), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
     @PutMapping("/{appointmentId}")
-    public ResponseEntity<ResponseTemplate<Appointment>> rescheduleAppointment(
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ResponseTemplate<AppointmentDto>> rescheduleAppointment(
             @PathVariable String appointmentId, @RequestParam("newDateTime") String newDateTime)
     {
         try {

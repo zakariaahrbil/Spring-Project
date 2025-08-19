@@ -4,7 +4,7 @@ import com.example.SpringProjectApplication.Entities.AppointmentType;
 import com.example.SpringProjectApplication.Entities.Status;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,32 +20,29 @@ import java.time.LocalDateTime;
 @Data
 public class AppointmentDto
 {
-
-
+    @Null
+    private Long id;
+    @Null
     private Status status;
-
     @NotNull
     private AppointmentType type;
 
     @NotNull
     private LocalDateTime proposedDateTime;
-
+    @Null
     private LocalDateTime confirmedDateTime;
 
     @NotBlank
     @Size(max = 255)
     private String reason;
-
-    @PastOrPresent
     private Timestamp createdAt;
-
-    @Size(max = 255)
+    @Null
     private String meetingLink;
-
+    @Null
     private LocalDateTime startTime;
 
     @NotNull
     private Long patientId;
-
+    @Null
     private Long visitRecordId;
 }

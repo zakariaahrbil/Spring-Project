@@ -35,4 +35,8 @@ public class VisitRecord {
 
     @OneToOne(mappedBy = "visitRecord")
     private Appointment appointment;
+
+    @ManyToOne
+    @JoinColumn(name = "patient_id")
+    private User patient;
 }
